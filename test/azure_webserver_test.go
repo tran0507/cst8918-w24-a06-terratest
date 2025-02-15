@@ -4,12 +4,13 @@ import (
 	"testing"
 	"fmt"
 	 "strings"
-
+	 "time"
+	
 	"github.com/gruntwork-io/terratest/modules/azure"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"github.com/gruntwork-io/terratest/modules/ssh"
-	
+
 )
 
 // You normally want to run this under a separate "Testing" subscription
@@ -37,15 +38,16 @@ func TestAzureLinuxVMCreation(t *testing.T) {
 
 	// Run `terraform output` to get the value of output variable
 	vmName := terraform.Output(t, terraformOptions, "vm_name")
+	//vmName:="tran0507A05VM"
 	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
 	nicName := terraform.Output(t, terraformOptions, "nic_name") // Fetch NIC name
 	publicIP := terraform.Output(t, terraformOptions, "public_ip") // Fetch Public IP
 
 	// Confirm VM exists
 	assert.True(t, azure.VirtualMachineExists(t, vmName, resourceGroupName, subscriptionID))
+	time.Sleep(30* time.Second)
 
-
-	vm:= azure.GetVirtualMachine(t, resourceGroupName, vmName, subscriptionID)
+	vm:= azure.GetVirtualMachine(t,vmName,resourceGroupName,subscriptionID)
 	
 	// Get NIC attached to the VM
 	vmNICs := *vm.NetworkProfile.NetworkInterfaces
@@ -69,8 +71,6 @@ func TestAzureLinuxVMCreation(t *testing.T) {
 	// Check if the public IP is valid
 	assert.NotEmpty(t, publicIP, "Public IP should not be empty")
 
-
-
 	// SSH into the VM and check Ubuntu version
 
 	keyPair := &ssh.KeyPair{
@@ -78,7 +78,6 @@ func TestAzureLinuxVMCreation(t *testing.T) {
 		PublicKey:  "/mnt/c/Users/X/.ssh/id_rsa.pub",
 	}
 	
-
 	sshHost := ssh.Host{
 		Hostname:    terraform.Output(t, terraformOptions, "public_ip"),
 		SshUserName: terraform.Output(t, terraformOptions, "admin_username"),
@@ -86,22 +85,15 @@ func TestAzureLinuxVMCreation(t *testing.T) {
 	}
 
 	// Command to check Ubuntu version
-	command := "lsb_release -a"
+	command := "cat /etc/os-release && lsb_release -a || true"
 
 	output, err := ssh.CheckSshCommandE(t, sshHost, command)
-
 	if err != nil {
-    t.Fatalf("Failed to execute command: %v", err)
-}
-	if err != nil {
+		t.Logf("SSH command output: %s", output)
 		t.Fatalf("Failed to execute command: %v", err)
 	}
-
-	// Check if the output contains the expected Ubuntu version
-	expectedVersion := "Ubuntu 22.04" // Adjust this to match your expected version
-	assert.Contains(t, output, expectedVersion, fmt.Sprintf("VM should be running %s", expectedVersion))
-
-	t.Logf("Checking for VM: %s in Resource Group: %s", vmName, resourceGroupName)
+	t.Logf("OS release info: %s", output)
+	assert.Contains(t, output, "Ubuntu 22.04", "VM should be running Ubuntu 22.04")
 
 
 }
