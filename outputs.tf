@@ -14,3 +14,6 @@ output "nic_name" {
 output "public_ip" {
   value = azurerm_linux_virtual_machine.webserver.public_ip_address
 }
+output "admin_username" {
+  value = var.admin_username
+}

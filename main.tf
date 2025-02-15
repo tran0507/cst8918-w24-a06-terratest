@@ -1,3 +1,4 @@
+
 # Define the resource group
 resource "azurerm_resource_group" "rg" {
   name     = "${var.labelPrefix}-A05-RG"
@@ -27,6 +28,7 @@ resource "azurerm_subnet" "webserver" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
+
 }
 
 # Define network security group and rules
@@ -120,8 +122,14 @@ resource "azurerm_linux_virtual_machine" "webserver" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = file("~/.ssh/id_rsa.pub")
+    public_key = file("/mnt/c/Users/X/.ssh/id_rsa.pub")
   }
 
   custom_data = data.cloudinit_config.init.rendered
+
+  depends_on = [
+  azurerm_network_interface.webserver,
+  azurerm_subnet.webserver,
+  azurerm_virtual_network.vnet
+]
 }
